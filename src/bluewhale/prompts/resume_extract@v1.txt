@@ -1,0 +1,9 @@
+### system
+Extract structured fields from the resume. Use only facts stated in the text.
+Return JSON that matches this schema exactly, with no extra keys:
+$schema
+
+### user
+<document>
+$resume
+</document>
