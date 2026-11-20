@@ -1,0 +1,40 @@
+# Local stack: Postgres + pgvector, the API and the Streamlit UI.
+#   docker compose up --build
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: bluewhale
+      POSTGRES_USER: bluewhale
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bluewhale"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      BW_ENV: local
+      BW_VECTOR_BACKEND: pgvector
+      BW_DATABASE_URL: postgresql://bluewhale:${POSTGRES_PASSWORD:-localdev}@db:5432/bluewhale
+      BW_EMBEDDING_BACKEND: fastembed
+      BW_LLM_PROVIDERS: ${BW_LLM_PROVIDERS:-local}
+    ports: ["8000:8000"]
+
+  ui:
+    image: python:3.12-slim
+    depends_on: [api]
+    working_dir: /ui
+    volumes: [./ui:/ui]
+    environment:
+      BW_API_URL: http://api:8000
+    command: sh -c "pip install -q streamlit requests && streamlit run streamlit_app.py --server.address 0.0.0.0"
+    ports: ["8501:8501"]
+
+volumes:
+  pgdata:
